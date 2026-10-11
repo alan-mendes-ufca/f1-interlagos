@@ -20,12 +20,7 @@ for (const kind of kinds) {
   const s = art.props[kind];
   add(`${kind} (wu ${s.worldWidth}${s.glow ? ', glow' : ''})`, s.canvas);
 }
-art.rivalCars.forEach((s, i) => add(`rivalCar ${i} (wu ${s.worldWidth})`, s.canvas));
+art.rivalCars.forEach((s, i) => add(`rivalCar ${i} (wu ${s.center.worldWidth})`, s.center.canvas));
+add('playerCar', art.playerCar.center.canvas);
 add('sky', art.sky, true);
 add('hills', art.hills, true);
-add('cockpit', art.cockpit);
-add('wheel', art.wheel);
-const d = art.wheelDisplay;
-const note = document.createElement('figcaption');
-note.textContent = `wheelDisplay x=${d.x} y=${d.y} w=${d.w} h=${d.h}`;
-grid.append(note);
