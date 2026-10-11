@@ -291,7 +291,7 @@ function skyline(): SpriteArt {
 }
 
 /** Todos os PropKind com sprite; base do sprite fica na última linha do canvas (sobre a estrada). */
-export function buildProps(): Record<PropKind, SpriteArt> {
+export function buildProps(): Omit<Record<PropKind, SpriteArt>, 'bush' | 'fence' | 'flag' | 'tvtower'> {
   return {
     grandstand: grandstand(),
     floodlight: floodlight(),

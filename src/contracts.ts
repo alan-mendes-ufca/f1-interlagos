@@ -3,6 +3,8 @@
    Escrito pelo agente principal. Workers NÃO alteram este arquivo; se um
    contrato precisar mudar, relatem a necessidade no retorno.
 
+   v2: câmera em 3ª pessoa atrás do carro (estilo 80's Overdrive/Horizon
+   Chase), dia ensolarado, trilha synthwave chiptune.
    Arquitetura: pseudo-3D (estilo Top Gear/OutRun) em Canvas 2D puro, sem
    WebGL (o Chrome do usuário não tem WebGL). Resolução interna 480x270,
    ampliada com image-rendering: pixelated. Luz/brilho em canvas sobreposto.
@@ -31,7 +33,11 @@ export type PropKind =
   | 'tyrewall'        // barreira de pneus
   | 'pitbuilding'     // prédio dos boxes
   | 'lake'            // trecho do lago (Descida do Lago)
-  | 'skyline';        // prédios de São Paulo com janelas acesas
+  | 'skyline'         // prédios de São Paulo próximos
+  | 'bush'            // arbusto arredondado baixo
+  | 'fence'           // alambrado de proteção
+  | 'flag'            // mastro com bandeira do Brasil tremulando
+  | 'tvtower';        // torre de câmera de TV
 
 export interface PropPlacement {
   kind: PropKind;
@@ -87,21 +93,39 @@ export interface SpriteArt {
   glow?: { color: string; radius: number; dy: number };
 }
 
+/** Cores da estrada/terreno; o renderizador alterna claro/escuro por faixa de segmentos. */
+export interface RoadPalette {
+  asphaltLight: string; asphaltDark: string;
+  grassLight: string; grassDark: string;
+  /** Faixa de terreno logo após a zebra (ex.: área de escape/terra). */
+  shoulderLight: string; shoulderDark: string;
+  kerbA: string; kerbB: string;
+  /** Linhas de pista (bordas brancas e faixas tracejadas). */
+  lane: string;
+  /** Neblina/atmosfera de distância (céu perto do horizonte). */
+  fog: string;
+}
+
+/** Carro de F1 visto de trás em 3 poses de esterço. */
+export interface CarSprites {
+  left: SpriteArt;
+  center: SpriteArt;
+  right: SpriteArt;
+}
+
 export interface ArtBundle {
   props: Record<PropKind, SpriteArt>;
-  /** Carros rivais vistos de trás: 5 equipes fictícias, 3 tamanhos cada não são necessários (escala em runtime). */
-  rivalCars: SpriteArt[];
-  /** Céu de fundo (largura >= 2*VIEW_W para parallax), entardecer azul/ciano/carmim. */
-  sky: HTMLCanvasElement;
-  /** Morros e skyline distante (parallax), mesma largura do céu. */
-  hills: HTMLCanvasElement;
-  /** Cockpit em 1ª pessoa, VIEW_W x VIEW_H, com transparência no centro.
-   *  Halo, laterais da carenagem e pneus dianteiros. */
-  cockpit: HTMLCanvasElement;
-  /** Volante (desenhado separado para girar). Display central em branco:
-   *  o HUD escreve marcha/velocidade por cima nas coordenadas `wheelDisplay`. */
-  wheel: HTMLCanvasElement;
-  wheelDisplay: { x: number; y: number; w: number; h: number };
+  /** Carro do jogador (carmim/ciano, maior detalhe), desenhado fixo na parte
+   *  inferior central da tela; canvas ~112x56. */
+  playerCar: CarSprites;
+  /** 5 rivais de escuderias fictícias, mesmas 3 poses; canvas ~112x56 (escalados em runtime). */
+  rivalCars: CarSprites[];
+  /** Camadas de fundo, todas com largura 960 (parallax horizontal, repetem). */
+  sky: HTMLCanvasElement;        // 960x270: gradiente diurno + sol com raios (opaco)
+  clouds: HTMLCanvasElement;     // 960x~140: nuvens volumosas (transparente)
+  mountains: HTMLCanvasElement;  // 960x~90: serra distante azulada (transparente)
+  hills: HTMLCanvasElement;      // 960x~80: morros verdes + skyline de SP (transparente)
+  road: RoadPalette;
 }
 
 // --------------------------------------------------------------------------
@@ -133,4 +157,23 @@ export interface RaceState {
   sectionName: string;
   gear: number;
   rpm: number; // 0..1
+}
+
+// --------------------------------------------------------------------------
+// Áudio (src/audio/*)
+// --------------------------------------------------------------------------
+
+/** Implementado em src/audio/index.ts como `createSoundtrack(): Soundtrack`.
+ *  Web Audio sintetizado em runtime, sem arquivos de som. */
+export interface Soundtrack {
+  /** Inicia o AudioContext (precisa de gesto do usuário) e a música. Idempotente. */
+  start(): void;
+  setMuted(muted: boolean): void;
+  readonly muted: boolean;
+  /** 'menu' = faixa calma; 'race' = faixa da corrida; 'finish' = vinheta curta. */
+  setTrack(track: 'menu' | 'race' | 'finish'): void;
+  /** Ronco do motor por frame: rpm 0..1, speed 0..1. */
+  setEngine(rpm: number, speed: number): void;
+  /** Efeitos curtos. */
+  sfx(name: 'countdown' | 'go' | 'crash' | 'lap' | 'kerb'): void;
 }
