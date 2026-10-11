@@ -1,0 +1,17 @@
+:root {
+  --bg: #02060f;
+  --ink: #eaf4ff;
+  --pixel: 'Pixelify Sans', ui-monospace, monospace;
+  font-family: var(--pixel);
+  color: var(--ink);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+#game { position: fixed; inset: 0; display: grid; place-items: center; }
+#game .stage { position: relative; }
+#game canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+#game .glowmap { pointer-events: none; mix-blend-mode: screen; filter: blur(3px) saturate(1.3); }
+#game .stage::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(1, 6, 20, 0.7) 100%);
+}
