@@ -162,6 +162,7 @@ export function mountains(): HTMLCanvasElement {
   const layers = [
     { top: 12, amp: 1, col: ['#a9b4f2', '#8c9ae6', '#7a86d6', '#6a72c4'], seed: 3, peak: '#7fc6c4' },
     { top: 30, amp: 0.8, col: ['#8a9ae8', '#6c7ed8', '#5a68c6', '#4a54b0'], seed: 7, peak: '#58b4b0' },
+    { top: 44, amp: 0.55, col: ['#7a8ae0', '#5e6cc8', '#4c58b4', '#3e489c'], seed: 11, peak: '#46a0a0' },
   ];
   for (const [li, L] of layers.entries()) {
     const terms: [number, number, number][] = [
@@ -269,41 +270,101 @@ export function hills(): HTMLCanvasElement {
     p.px(ax + 1, horizon - ah - 2, '#ffd0d8');
   }
 
-  // Morro de trás (azulado) e da frente (verde vivo).
+  // Três camadas de morros (distante azulada, intermediária, próxima verde viva), com
+  // torres de transmissão entre as duas primeiras e casinhas nas encostas.
   const hillLayers = [
-    { off: 56, terms: [[2, 5, 1], [4, 3.5, 2.2], [9, 2, 0.4], [23, 1.1, 3]] as [number, number, number][], pal: ['#9af0a0', '#4ec88a', '#34a888', '#278a7e'], dark: '#1f6a70' },
-    { off: 66, terms: [[3, 5, 4], [7, 3, 1.3], [13, 2, 5], [29, 1, 0.7]] as [number, number, number][], pal: ['#b8ff7a', '#4cd44a', '#2fb23c', '#1f8a38'], dark: '#146a34' },
+    { off: 50, terms: [[2, 4, 0.5], [5, 3, 2.2], [11, 1.8, 0.4], [27, 1, 3]] as [number, number, number][], pal: ['#a8f0c8', '#62c8a8', '#4aa8a0', '#3a8a94'], dark: '#2a6a80' },
+    { off: 58, terms: [[2, 5, 1], [4, 3.5, 2.2], [9, 2, 0.4], [23, 1.1, 3]] as [number, number, number][], pal: ['#9af0a0', '#4ec88a', '#34a888', '#278a7e'], dark: '#1f6a70' },
+    { off: 67, terms: [[3, 5, 4], [7, 3, 1.3], [13, 2, 5], [29, 1, 0.7]] as [number, number, number][], pal: ['#b8ff7a', '#4cd44a', '#2fb23c', '#1f8a38'], dark: '#146a34' },
   ];
-  for (const [li, L] of hillLayers.entries()) {
-    const hgt = (x: number): number => L.off + ridge(x, SKY_W, L.terms);
+  const ridgeY = (li: number, x: number): number => hillLayers[li].off + ridge(((x % SKY_W) + SKY_W) % SKY_W, SKY_W, hillLayers[li].terms);
+  const paintHill = (li: number): void => {
+    const L = hillLayers[li];
     for (let x = 0; x < SKY_W; x++) {
-      const y0 = Math.round(hgt(x));
-      const slope = hgt(x + 3) - hgt(x - 3);
+      const y0 = Math.round(ridgeY(li, x));
+      const slope = ridgeY(li, x + 3) - ridgeY(li, x - 3);
       for (let y = y0; y < H; y++) {
         const d = y - y0;
         let tone = d < 2 ? 0 : d < 7 ? 1 : d < 14 ? 2 : 3;
         if (slope < -0.8 && tone > 0) tone -= 1;
         if (slope > 0.9 && tone < 3) tone += 1;
         let c = L.pal[tone];
-        // Dithering entre as faixas.
         if (d >= 5 && d < 9 && bayer(x, y) > (d - 5) / 4) c = L.pal[Math.max(0, tone - 1)];
-        // Copas de mata: pontos escuros e claros.
         const hv = hash2(x >> 1, y >> 1, 40 + li);
         if (d > 1 && hv > 0.9) c = L.pal[Math.min(3, tone + 1)];
         else if (d > 1 && hv < 0.07) c = L.pal[Math.max(0, tone - 1)];
         p.px(x, y, c);
       }
-      p.px(x, y0, li === 0 ? '#c8ffc0' : '#e2ff9a');
-      if (li === 1 && slope > 0.9) p.px(x, y0 + 1, L.dark);
+      p.px(x, y0, li === 0 ? '#d8ffe0' : li === 1 ? '#c8ffc0' : '#e2ff9a');
+      if (li === 2 && slope > 0.9) p.px(x, y0 + 1, L.dark);
+    }
+  };
+  // Torre de transmissão em treliça (silhueta com contorno e perna clara).
+  const pylon = (x: number, by: number, h: number): void => {
+    for (let k = 0; k <= h; k++) {
+      const half = 1 + Math.round((k / h) * 3);
+      const y = by - k;
+      p.px(x - half, y, '#4a4a98');
+      p.px(x + half, y, '#3a3a80');
+      if (k % 4 === 0) p.hline(x - half, y, half * 2 + 1, '#8a8ad8');
+      else p.px(x - half + ((k >> 1) % 2 ? 1 : 0), y, '#6a6ab8');
+    }
+    for (const [dy, hw] of [[h - 2, 7], [h - 8, 6], [h - 14, 5]] as const) {
+      p.hline(x - hw, by - dy, hw * 2 + 1, '#4a4a98');
+      p.px(x - hw, by - dy + 1, '#c8c8f8');
+      p.px(x + hw, by - dy + 1, '#c8c8f8');
+    }
+    p.px(x, by - h - 1, '#ff3a4a');
+  };
+  const wire = (x0: number, y0: number, x1: number, y1: number, sag: number): void => {
+    for (let x = x0; x <= x1; x++) {
+      const t = (x - x0) / (x1 - x0);
+      p.px(x, Math.round(y0 + (y1 - y0) * t + Math.sin(t * Math.PI) * sag), '#5a5aa8');
+    }
+  };
+  // Casinhas com telhado cerâmico.
+  const casinha = (x: number, y: number, wall: string): void => {
+    p.rect(x, y, 4, 3, wall);
+    p.px(x + 3, y, '#b0a0e0');
+    p.px(x + 3, y + 1, '#b0a0e0');
+    p.rect(x - 1, y - 2, 6, 2, '#e8481e');
+    p.hline(x, y - 3, 4, '#ff9a3a');
+    p.px(x + 1, y + 1, '#2a52b8');
+  };
+  paintHill(0);
+  const towers = [150, 330, 520, 760];
+  towers.forEach((tx, i) => {
+    const by = Math.round(ridgeY(0, tx)) + 2;
+    pylon(tx, by, 20 - (i % 2) * 3);
+  });
+  for (let i = 0; i < towers.length - 1; i++) {
+    const a1 = towers[i];
+    const b1 = towers[i + 1];
+    const ya = Math.round(ridgeY(0, a1)) + 2 - 17;
+    const yb = Math.round(ridgeY(0, b1)) + 2 - 17 + ((i + 1) % 2) * 3;
+    wire(a1 + 6, ya, b1 - 6, yb, 4);
+    wire(a1 - 6, ya + 6, b1 + 6, yb + 6, 4);
+  }
+  const rr = rng(5);
+  paintHill(1);
+  for (let i = 0; i < 18; i++) {
+    const x = Math.floor(rr() * (SKY_W - 8));
+    casinha(x, Math.round(ridgeY(1, x)) + 6 + Math.floor(rr() * 3), rr() < 0.5 ? '#ffffff' : '#ffe0a0');
+  }
+  paintHill(2);
+  for (let c = 0; c < 8; c++) {
+    const cx0 = 40 + c * 118 + Math.floor(rr() * 30);
+    for (let i = 0; i < 5; i++) {
+      const x = cx0 + i * 6 + Math.floor(rr() * 3);
+      casinha(x, Math.round(ridgeY(2, x)) + 6 + Math.floor(rr() * 3), ['#ffffff', '#ffe0a0', '#ffc0d0', '#c0f0ff'][Math.floor(rr() * 4)]);
     }
   }
-  // Pequenos telhados/casas dos bairros nos morros da frente.
-  const rr = rng(5);
-  for (let i = 0; i < 40; i++) {
-    const x = Math.floor(rr() * (SKY_W - 6));
-    const y = 66 + Math.floor(rr() * 10);
-    p.rect(x, y, 3, 2, rr() < 0.5 ? '#ffffff' : '#ffb04a');
-    p.px(x, y + 1, '#b0a0e0');
+  // Árvores pequenas pontuando o morro da frente.
+  for (let i = 0; i < 60; i++) {
+    const x = Math.floor(rr() * SKY_W);
+    const y = Math.round(ridgeY(2, x)) + 3 + Math.floor(rr() * 7);
+    p.rect(x, y, 3, 2, '#14803e');
+    p.px(x, y, '#5ae05a');
   }
   return canvas;
 }
