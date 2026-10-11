@@ -1,18 +1,18 @@
 import type { ArtBundle } from '../contracts';
-import { buildRivalCars } from './cars';
-import { cockpit, WHEEL_DISPLAY, wheel } from './cockpit';
+import { buildPlayerCar, buildRivalCars } from './cars';
 import { buildProps } from './props';
-import { hills, sky } from './sky';
+import { clouds, hills, mountains, ROAD, sky } from './sky';
 
-/** Gera toda a arte procedural. Chamada uma vez no boot; os canvases são reutilizados. */
+/** Gera toda a arte procedural diurna. Chamada uma vez no boot; os canvases são reutilizados. */
 export function buildArt(): ArtBundle {
   return {
     props: buildProps(),
+    playerCar: buildPlayerCar(),
     rivalCars: buildRivalCars(),
     sky: sky(),
+    clouds: clouds(),
+    mountains: mountains(),
     hills: hills(),
-    cockpit: cockpit(),
-    wheel: wheel(),
-    wheelDisplay: { ...WHEEL_DISPLAY },
+    road: { ...ROAD },
   };
 }

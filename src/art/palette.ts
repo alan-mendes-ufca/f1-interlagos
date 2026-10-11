@@ -1,34 +1,29 @@
-/** Paleta compartilhada. Contornos são azul-noite, nunca preto puro nem cinza. */
+/** Paleta diurna compartilhada: saturada, contornos azul-noite (nunca preto puro nem cinza). */
 export const C = {
-  ink: '#0a0a24',
+  ink: '#1a1038',
   navy: '#0b1a4a',
-  blue: '#1b4f9a',
+  blue: '#1b5fe0',
+  sky: '#7fd4ff',
   cyan: '#2fd6ff',
   cyanLight: '#bff6ff',
-  purple: '#b44fd6',
-  carmine: '#ff3a6e',
-  carmineDeep: '#8a1038',
-  amber: '#ffc23a',
-  amberDeep: '#ff9a1f',
+  carmine: '#ff2a4a',
+  carmineLight: '#ff7a8e',
+  carmineDeep: '#a00c34',
+  white: '#ffffff',
   cream: '#fff4c0',
-  signalRed: '#ff2a3a',
+  yellow: '#ffd23a',
+  yellowDeep: '#e8a010',
+  orange: '#ff8a1a',
   green: '#2fb85a',
-  yellowCrowd: '#ffd23a',
-  blueCrowd: '#2f7bff',
-  orangeCrowd: '#ff7a1a',
-  teal: '#0f5f6e',
-  tealDeep: '#0b4a52',
-  tealRim: '#5fe0c0',
-  violetDeep: '#14082e',
-  violetRim: '#3a2a7a',
-  titaniumLight: '#eef4ff',
-  titaniumMid: '#b8c6e0',
-  titaniumDark: '#7f8fb0',
-  titaniumEdge: '#2a3560',
-  tyre: '#0a0a14',
+  greenBr: '#009c3b',
+  blueBr: '#002776',
+  tyre: '#1a1630',
+  tyreLight: '#3c3a6a',
 };
 
-/** Paletas de folhagem da sibipiruna (recorte ciano) e do ipê (amarelo). */
-export const TREE_PAL = { o: '#04202e', d: '#0b3646', m: '#15683f', l: '#24905a', h: '#7ff0ff' };
-export const IPE_PAL = { o: '#3b2a0a', d: '#b07a14', m: '#f2b632', l: '#ffd84a', h: '#fff6b8' };
-export const LEAF_DARK_PAL = { o: '#05202e', d: '#0b3646', m: '#15683f', l: '#3ea84c', h: '#2a8a4a' };
+/** Pal5: o = contorno, d = sombra, m = meio, l = luz, h = brilho de recorte. */
+export const TREE_PAL = { o: '#0b4a3a', d: '#14803e', m: '#26b24a', l: '#5ae05a', h: '#c8ff7a' };
+export const TREE_DEEP_PAL = { o: '#0b3a3a', d: '#0f6a3a', m: '#1f9a46', l: '#46c850', h: '#a8f06a' };
+export const IPE_PAL = { o: '#8a5a0a', d: '#e89a10', m: '#ffc81e', l: '#ffe35a', h: '#fff9b0' };
+export const BUSH_PAL = { o: '#0e5a3a', d: '#1a9a40', m: '#34c84a', l: '#6ee85a', h: '#d0ff8a' };
+export const CLOUD_PAL = { o: '#94a0ee', d: '#b4bdf6', m: '#d8e0ff', l: '#f0f4ff', h: '#ffffff' };
