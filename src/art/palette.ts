@@ -26,4 +26,4 @@ export const TREE_PAL = { o: '#0b4a3a', d: '#14803e', m: '#26b24a', l: '#5ae05a'
 export const TREE_DEEP_PAL = { o: '#0b3a3a', d: '#0f6a3a', m: '#1f9a46', l: '#46c850', h: '#a8f06a' };
 export const IPE_PAL = { o: '#8a5a0a', d: '#e89a10', m: '#ffc81e', l: '#ffe35a', h: '#fff9b0' };
 export const BUSH_PAL = { o: '#0e5a3a', d: '#1a9a40', m: '#34c84a', l: '#6ee85a', h: '#d0ff8a' };
-export const CLOUD_PAL = { o: '#94a0ee', d: '#b4bdf6', m: '#d8e0ff', l: '#f0f4ff', h: '#ffffff' };
+export const CLOUD_PAL = { o: '#b8c0f8', d: '#b4bdf6', m: '#d8e0ff', l: '#f0f4ff', h: '#ffffff' };

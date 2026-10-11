@@ -53,7 +53,7 @@ const FONT: Record<string, string[]> = {
   G: ['011', '100', '101', '101', '011'],
   I: ['111', '010', '010', '010', '111'],
   L: ['100', '100', '100', '100', '111'],
-  N: ['101', '111', '111', '101', '101'],
+  N: ['111', '101', '101', '101', '101'],
   O: ['010', '101', '101', '101', '010'],
   P: ['110', '101', '110', '100', '100'],
   R: ['110', '101', '110', '101', '101'],
@@ -203,7 +203,7 @@ function palm(p: Painter, x: number, top: number, base: number): void {
   // Folhas: 9 arcos com folíolos.
   const dirs = [-1, -0.75, -0.45, -0.2, 0.2, 0.45, 0.75, 1, 0];
   for (const [i, d] of dirs.entries()) {
-    const len = 22 - Math.abs(d) * 4;
+    const len = 30 - Math.abs(d) * 6;
     for (let k = 0; k <= len; k++) {
       const t = k / len;
       const fx = x + d * len * t;
@@ -650,7 +650,7 @@ function fence(): SpriteArt {
   // Malha em losangos translúcida.
   for (let y = 10; y < base; y++) {
     for (let x = 2; x < W - 10; x++) {
-      if ((x + y) % 4 === 0 || (x - y + 400) % 4 === 0) p.px(x, y, (x + y) % 8 < 4 ? '#a8b8f8' : '#7f90e0');
+      if ((x + y) % 6 === 0 || (x - y + 600) % 6 === 0) p.px(x, y, (x + y) % 8 < 4 ? '#a8b8f8' : '#7f90e0');
     }
   }
   // Postes com topo inclinado para dentro.

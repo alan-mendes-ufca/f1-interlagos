@@ -71,7 +71,7 @@ function cumulus(w: number, h: number, seed: number): HTMLCanvasElement {
   const r = rng(seed);
   const base = h - 4;
   const n = Math.max(4, Math.round(w / 22));
-  const R = Math.min(h - 8, w * 0.32);
+  const R = Math.min((h - 8) / 2.4, w * 0.3);
   const puffs: { x: number; y: number; r: number }[] = [];
   for (let i = 0; i < n; i++) {
     const t = (i + 0.5) / n;
@@ -111,9 +111,9 @@ function cumulus(w: number, h: number, seed: number): HTMLCanvasElement {
       if (img.data[o + 3] === 0) continue;
       const dist = bottom - y;
       const dith = bayer(x, y);
-      let c = under[2];
+      let c: number[];
       if (dist <= 1) c = under[0];
-      else if (dist <= 3) c = dist === 2 && dith > 0.5 ? under[1] : under[1];
+      else if (dist <= 3) c = under[1];
       else c = dith > 0.45 ? under[2] : [img.data[o], img.data[o + 1], img.data[o + 2]];
       // O terço esquerdo da base recebe menos sombra (luz vem da esquerda).
       if (x < w * 0.28 && dist > 1) c = dith > 0.5 ? under[2] : c;
@@ -185,7 +185,7 @@ export function mountains(): HTMLCanvasElement {
         // Picos altos recebem vegetação verde-azulada com dithering.
         if (d < 14 && y0 < L.top + 14 && bayer(x, y) > d / 14) c = d < 2 ? '#d4f0e8' : L.peak;
         // Ravinas verticais de textura.
-        if (d > 3 && hash2(x >> 1, y >> 2, L.seed) > 0.88) c = L.col[Math.min(3, tone + 1)];
+        if (d > 3 && hash2(x >> 1, y >> 2, L.seed) > 0.97) c = L.col[Math.min(3, tone + 1)];
         p.px(x, y, c);
       }
       p.px(x, y0, li === 0 ? '#c8d4ff' : '#9fb0f6');

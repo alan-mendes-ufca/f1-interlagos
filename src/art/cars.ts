@@ -96,12 +96,12 @@ function drawCar(p: Painter, L: Livery, pose: Pose): void {
   const a = L.accent;
 
   // Largura dos pneus: o lado voltado ao espectador fica mais largo e mostra flanco.
-  const lw = 25 - yaw * 4; // yaw>0 (direita): esquerdo mais largo
-  const rw = 25 + yaw * 4;
-  const lx = 6 + tyreOff + (yaw > 0 ? -2 : 3);
-  const rx = 112 - 6 - rw + tyreOff + (yaw < 0 ? 2 : -3);
-  const tyreTop = 25;
-  const tyreH = 26;
+  const lw = 21 - yaw * 4; // yaw>0 (direita): esquerdo mais largo
+  const rw = 21 + yaw * 4;
+  const lx = 9 + tyreOff + (yaw > 0 ? -2 : 3);
+  const rx = 112 - 9 - rw + tyreOff + (yaw < 0 ? 2 : -3);
+  const tyreTop = 23;
+  const tyreH = 28;
 
   // Sombra de contato sob o carro (opaca, azul-noite).
   p.rect(10 + tyreOff, 52, 92, 3, 'rgba(26,16,56,0.45)');
