@@ -7,8 +7,8 @@ import { bayer, lerpHex } from './util';
 const OUT = '#1a1038';
 const SHADOW = '#2a1060';
 
-function sprite(canvas: HTMLCanvasElement, widthMeters: number): SpriteArt {
-  return { canvas, widthMeters };
+function sprite(canvas: HTMLCanvasElement): SpriteArt {
+  return { canvas, widthMeters: 0 };
 }
 
 /** Sombra projetada no chão para a direita (luz vem do alto à esquerda). */
@@ -61,6 +61,10 @@ const FONT: Record<string, string[]> = {
   T: ['111', '010', '010', '010', '010'],
   U: ['101', '101', '101', '101', '111'],
   Ã: ['010', '101', '111', '101', '101'],
+  '0': ['111', '101', '101', '101', '111'],
+  '1': ['010', '110', '010', '010', '111'],
+  '2': ['111', '001', '111', '100', '111'],
+  '3': ['111', '001', '111', '001', '111'],
 };
 
 function textWidth(s: string, scale: number): number {
@@ -108,10 +112,18 @@ function person(p: Painter, x: number, y: number, r: () => number, dim: boolean)
   p.rect(x, y, 3, 2, tone(skin));
   p.hline(x, y - 1 + (r() < 0.3 ? 1 : 0), 3, tone(hair));
   if (r() < 0.16) {
-    // Braço levantado.
+    // Braço levantado, às vezes segurando uma bandeirinha do Brasil.
     p.px(x - 1, y + 1, tone(skin));
     p.px(x - 1, y, tone(skin));
+    if (r() < 0.45) {
+      p.px(x - 1, y - 1, tone('#e8e0ff'));
+      p.rect(x - 3, y - 3, 3, 2, tone('#00b040'));
+      p.px(x - 2, y - 3, tone('#ffdf00'));
+    }
+  } else if (r() < 0.12) {
+    p.hline(x - 1, y - 1, 5, tone(SHIRTS[Math.floor(r() * 3)]));
   }
+  if (r() < 0.25) p.px(x + 1, y + 3, tone('#ffffff'));
 }
 
 function grandstand(): SpriteArt {
@@ -140,16 +152,28 @@ function grandstand(): SpriteArt {
   // Muro frontal com faixa de patrocinadores genéricos.
   p.rect(left, 70, gw, 11, '#3b6bff');
   p.hline(left, 70, gw, '#9ab8ff');
-  p.rect(left, 74, gw, 3, '#ffdf00');
-  p.rect(left, 77, gw, 4, '#00b040');
+  p.rect(left, 76, gw, 2, '#ffdf00');
+  p.rect(left, 78, gw, 3, '#00b040');
   p.hline(left, 80, gw, '#0a7a3a');
-  for (let x = left + 8; x < left + gw; x += 22) p.rect(x, 71, 10, 2, '#ffffff');
+  for (const x of [26, 70, 122]) text(p, 'BRASIL', x, 71, 1, '#ffffff', '#0b2a9a');
   // Pilares laterais e centrais.
   for (const px of [left - 2, 58, 114, left + gw - 1]) {
     p.rect(px, 10, 3, 72, '#c8d0f8');
     p.vline(px, 10, 72, '#ffffff');
     p.vline(px + 2, 10, 72, '#7f8cd8');
   }
+  // Estrutura metálica: treliça em X sob a cobertura e terças.
+  for (let x = left; x < left + gw - 7; x += 8) {
+    for (let k = 0; k < 8; k++) {
+      p.px(x + k, 14 + k, '#b8c0f0');
+      p.px(x + 7 - k, 14 + k, '#8a96e0');
+    }
+  }
+  p.hline(left, 14, gw, '#d8e0ff');
+  p.hline(left, 21, gw, '#6a58c0');
+  // Guarda-corpo frontal com corrimão.
+  for (let x = left; x < left + gw; x += 6) p.vline(x, 66, 4, '#d8e0ff');
+  p.hline(left, 66, gw, '#ffffff');
   // Cobertura: topo iluminado, beiral azul e carmim, sombra por baixo.
   p.rect(0, 0, W - 4, 9, '#f4f8ff');
   p.hline(0, 0, W - 4, '#ffffff');
@@ -165,7 +189,7 @@ function grandstand(): SpriteArt {
   p.frame(0, 0, W - 4, 11, OUT);
   p.rect(0, baseY, W - 4, 3, '#a898f0');
   cast(p, 0, W - 4, H, 14, 3);
-  return sprite(canvas, 3000);
+  return sprite(canvas);
 }
 
 // --------------------------------------------------------------------------
@@ -244,6 +268,9 @@ function tree(): SpriteArt {
     [22, 30, 14, 9, TREE_PAL],
   ];
   for (const [i, [cx, cy, rx, ry, pal]] of lobes.entries()) blob(p, cx, cy, rx, ry, pal, 10 + i, 8, 0.2, 0.0, 0.5);
+  // Volume: cachos de luz no alto e sombra projetada pela copa no interior.
+  for (const [i, [cx, cy]] of ([[22, 26], [36, 20], [48, 28], [14, 36], [56, 36]] as const).entries()) blob(p, cx, cy, 8, 5, TREE_PAL, 70 + i, 7, 0.2, -0.35, 0.5);
+  blob(p, 38, 50, 20, 4, { ...TREE_DEEP_PAL, m: TREE_DEEP_PAL.d, l: TREE_DEEP_PAL.m }, 79, 8, 0.15, 0.4, 0.3);
   const r = rng(321);
   for (let i = 0; i < 40; i++) {
     const x = 14 + Math.floor(r() * 44);
@@ -253,7 +280,7 @@ function tree(): SpriteArt {
       if (r() < 0.4) p.px(x + 1, y, '#ffc81e');
     }
   }
-  return sprite(canvas, 1200);
+  return sprite(canvas);
 }
 
 function ipe(): SpriteArt {
@@ -288,7 +315,7 @@ function ipe(): SpriteArt {
     p.px(x, y, v < 0.4 ? '#fff9b0' : v < 0.7 ? '#ffd21e' : v < 0.9 ? '#e89a10' : '#4cc04a');
     if (v < 0.25) p.px(x + 1, y, '#ffe35a');
   }
-  return sprite(canvas, 1200);
+  return sprite(canvas);
 }
 
 // --------------------------------------------------------------------------
@@ -335,7 +362,7 @@ function billboard(): SpriteArt {
   // Moldura com luz de recorte.
   p.hline(3, 5, 122, '#ffffff');
   p.vline(3, 5, 38, '#ffffff');
-  return sprite(canvas, 1400);
+  return sprite(canvas);
 }
 
 function marshal(): SpriteArt {
@@ -381,7 +408,7 @@ function marshal(): SpriteArt {
     p.px(px + 8 + u, b - 52 + dy, '#fff9b0');
   }
   p.hline(px + 8, b - 44, 12, '#e8a010');
-  return sprite(canvas, 900);
+  return sprite(canvas);
 }
 
 function tyre(p: Painter, cx: number, cy: number, paint?: string): void {
@@ -413,7 +440,7 @@ function tyrewall(): SpriteArt {
   });
   // Cinta de amarração azul.
   p.hline(3, 16, W - 10, '#3b6bff');
-  return sprite(canvas, 1000);
+  return sprite(canvas);
 }
 
 // --------------------------------------------------------------------------
@@ -502,7 +529,7 @@ function pitbuilding(): SpriteArt {
     p.vline(fx, 0, 4, '#e8e0ff');
     brFlag(p, fx + 1, 0, 8, 6, (u) => Math.sin(u) * 0.7);
   }
-  return sprite(canvas, 3200);
+  return sprite(canvas);
 }
 
 // --------------------------------------------------------------------------
@@ -541,6 +568,16 @@ function lake(): SpriteArt {
     if (r() < 0.4) p.hline(x + 1, y + 1, len - 1, '#38b4ff');
   }
   for (let y = top + 2; y < bot - 2; y += 3) p.hline(24 + ((y * 7) % 14), y, 14 - (y - top) / 4, '#ffffff');
+  // Reflexo da mata da margem oposta (listras verdes dithered logo abaixo dela).
+  for (let y = top; y < top + 7; y++) {
+    for (let x = 0; x < W; x++) if (bayer(x, y) < 0.7 - (y - top) * 0.1 && (x + y) % 2 === 0) p.px(x, y, y < top + 3 ? '#14803e' : '#1a96d0');
+  }
+  // Trilha de brilho do sol: blocos que afinam, em dois tons (alternáveis para animar).
+  for (let k = 0; k < 6; k++) {
+    const y = top + 4 + k * 4;
+    p.hline(88 - (k % 2) * 3, y, 20 - k * 2, k % 2 ? '#d8f8ff' : '#ffffff');
+    p.hline(92, y + 1, 12 - k, '#a0e8ff');
+  }
   // Veleiro.
   const sx = 98;
   const sy = top + 12;
@@ -562,31 +599,65 @@ function lake(): SpriteArt {
   }
   p.hline(0, H - 2, W, '#14803e');
   p.hline(0, H - 1, W, '#0b4a3a');
-  return sprite(canvas, 2000);
+  return sprite(canvas);
 }
 
-function towerBlock(p: Painter, x: number, base: number, w: number, h: number, seed: number, antenna: boolean): void {
+interface Facade {
+  lit: string;
+  shade: string;
+  edge: string;
+  glassLit: string;
+  glassShade: string;
+}
+
+const FACADES: Facade[] = [
+  { lit: '#ffffff', shade: '#a8bcee', edge: '#7a8ede', glassLit: '#7fd4ff', glassShade: '#4a8ee8' },
+  { lit: '#ffe6c8', shade: '#e8a878', edge: '#b8704a', glassLit: '#7fd4ff', glassShade: '#4a8ee8' },
+  { lit: '#e4d4ff', shade: '#a888e0', edge: '#7a58b8', glassLit: '#9ae0ff', glassShade: '#5a8ee8' },
+  { lit: '#c8f4e8', shade: '#6ac8b0', edge: '#3a9884', glassLit: '#b8f0ff', glassShade: '#4aa8e0' },
+  { lit: '#6ac0ff', shade: '#2a7ae0', edge: '#1a52b0', glassLit: '#d8f8ff', glassShade: '#7ac8ff' },
+];
+
+/** Prédio com fachada em duas faces; `crown` 0 plano, 1 escalonado, 2 inclinado, 3 caixa-d'água. */
+function towerBlock(p: Painter, x: number, base: number, w: number, h: number, seed: number, antenna: boolean, fi = 0, crown = 0, fade = 0): void {
+  const F = FACADES[fi % FACADES.length];
+  const mixc = (c: string): string => (fade > 0 ? lerpHex(c, '#b4c4f0', fade) : c);
   const top = base - h;
   const lw = Math.ceil(w * 0.62);
-  p.rect(x - 1, top - 1, w + 2, h + 1, OUT);
-  p.rect(x, top, lw, h, '#ffffff');
-  p.rect(x + lw, top, w - lw, h, '#a8bcee');
-  p.vline(x + w - 1, top, h, '#7a8ede');
+  p.rect(x - 1, top - 1, w + 2, h + 1, mixc(OUT));
+  p.rect(x, top, lw, h, mixc(F.lit));
+  p.rect(x + lw, top, w - lw, h, mixc(F.shade));
+  p.vline(x + w - 1, top, h, mixc(F.edge));
   for (let y = top + 3; y < base - 2; y += 3) {
     for (let xx = x + 1; xx < x + w - 1; xx++) {
       const lit = xx < x + lw;
       const mix = hash2(xx + seed, y, seed);
       if (mix < 0.12) continue;
-      p.px(xx, y, lit ? ((xx + y) % 9 < 2 ? '#e0fbff' : '#7fd4ff') : '#4a8ee8');
-      p.px(xx, y + 1, lit ? '#4aa8ff' : '#3a6ed0');
+      p.px(xx, y, mixc(lit ? ((xx + y) % 9 < 2 ? '#e0fbff' : F.glassLit) : F.glassShade));
+      p.px(xx, y + 1, mixc(lit ? '#4aa8ff' : '#3a6ed0'));
     }
   }
-  p.hline(x, top, w, '#d8e4ff');
-  p.rect(x + 2, top - 3, Math.max(2, w - 5), 2, OUT);
-  p.rect(x + 3, top - 2, Math.max(1, w - 7), 1, '#c8d4ff');
+  // Marquises a cada 5 andares.
+  for (let y = top + 12; y < base - 4; y += 15) p.hline(x - 1, y, w + 2, mixc(F.edge));
+  p.hline(x, top, w, mixc('#d8e4ff'));
+  if (crown === 1) {
+    p.rect(x + 2, top - 5, w - 4, 4, mixc(OUT));
+    p.rect(x + 3, top - 4, w - 6, 3, mixc(F.lit));
+    p.rect(x + 4, top - 8, Math.max(2, w - 8), 3, mixc(OUT));
+    p.rect(x + 5, top - 7, Math.max(1, w - 10), 2, mixc(F.shade));
+  } else if (crown === 2) {
+    for (let k = 0; k < 6; k++) p.hline(x + k, top - 1 - k, Math.max(1, w - k * 2), k % 2 ? mixc(F.shade) : mixc('#ffffff'));
+  } else if (crown === 3) {
+    p.rect(x + 2, top - 6, 7, 6, mixc(OUT));
+    p.rect(x + 3, top - 5, 5, 4, mixc('#c8d4ff'));
+    p.px(x + 3, top - 5, mixc('#ffffff'));
+  } else {
+    p.rect(x + 2, top - 3, Math.max(2, w - 5), 2, mixc(OUT));
+    p.rect(x + 3, top - 2, Math.max(1, w - 7), 1, mixc('#c8d4ff'));
+  }
   if (antenna) {
-    for (let k = 0; k < 18; k++) p.px(x + Math.floor(w / 2), top - 4 - k, k % 6 < 3 ? '#ff2a4a' : '#ffffff');
-    p.px(x + Math.floor(w / 2), top - 23, '#ff2a4a');
+    for (let k = 0; k < 18; k++) p.px(x + Math.floor(w / 2), top - 6 - k, k % 6 < 3 ? '#ff2a4a' : '#ffffff');
+    p.px(x + Math.floor(w / 2), top - 25, '#ff2a4a');
   }
 }
 
@@ -596,24 +667,25 @@ function skyline(): SpriteArt {
   const { canvas, p } = makeCanvas(W, H);
   const base = H - 6;
   cast(p, 2, W - 20, H - 4, 14, 3);
-  const defs: [number, number, number, boolean][] = [
-    [4, 14, 56, false],
-    [20, 16, 80, false],
-    [38, 12, 64, false],
-    [52, 20, 96, true],
-    [74, 14, 70, false],
-    [90, 18, 88, false],
-    [110, 14, 60, false],
-    [126, 18, 76, true],
-    [146, 12, 48, false],
+  // Fileira de trás: mais pálida (névoa), prédios variados.
+  const back: [number, number, number][] = [[0, 12, 46], [14, 10, 70], [28, 14, 52], [62, 10, 84], [84, 12, 56], [106, 10, 74], [122, 14, 50], [150, 12, 62]];
+  back.forEach(([x, w, h], i) => towerBlock(p, x, base - 2, w, h, 200 + i, false, (i + 2) % FACADES.length, i % 4, 0.5));
+  const defs: [number, number, number, boolean, number, number][] = [
+    [4, 14, 56, false, 1, 3],
+    [20, 16, 80, false, 0, 1],
+    [38, 12, 64, false, 3, 0],
+    [52, 20, 96, true, 4, 2],
+    [74, 14, 70, false, 2, 3],
+    [90, 18, 88, false, 0, 1],
+    [110, 14, 60, false, 1, 0],
+    [126, 18, 76, true, 3, 2],
+    [146, 12, 48, false, 2, 3],
   ];
-  // Ordem: de trás para frente (mais altos primeiro).
-  [...defs].sort((a, b) => b[2] - a[2]).forEach(([x, w, h, ant], i) => towerBlock(p, x, base - (i % 3), w, h, 7 + i, ant));
-  // Árvores e gramado na base.
+  [...defs].sort((a, b) => b[2] - a[2]).forEach(([x, w, h, ant, fi, crown], i) => towerBlock(p, x, base - (i % 3), w, h, 7 + i, ant, fi, crown));
   p.rect(0, base, W - 8, 6, '#3fbf3f');
   p.hline(0, base, W - 8, '#9af07a');
   for (let x = 6; x < W - 14; x += 22) blob(p, x, base - 3, 9, 6, TREE_PAL, 90 + x, 7, 0.2, 0, 0.45);
-  return sprite(canvas, 3000);
+  return sprite(canvas);
 }
 
 function bush(): SpriteArt {
@@ -634,7 +706,7 @@ function bush(): SpriteArt {
     }
   }
   p.rect(10, H - 3, 36, 2, '#14803e');
-  return sprite(canvas, 700);
+  return sprite(canvas);
 }
 
 // --------------------------------------------------------------------------
@@ -669,7 +741,7 @@ function fence(): SpriteArt {
   p.hline(0, base, W - 8, '#ffffff');
   p.hline(0, base + 3, W - 8, '#7f8cd8');
   p.frame(0, base, W - 8, 4, OUT);
-  return sprite(canvas, 1200);
+  return sprite(canvas);
 }
 
 function flag(): SpriteArt {
@@ -690,7 +762,7 @@ function flag(): SpriteArt {
   p.rect(5, base - 1, 8, 1, '#c8d0f4');
   // Bandeira do Brasil tremulando: 34x24.
   brFlag(p, 11, 8, 34, 24, (u) => Math.sin(u * 0.32) * (1 + u * 0.07));
-  return sprite(canvas, 600);
+  return sprite(canvas);
 }
 
 function tvtower(): SpriteArt {
@@ -745,7 +817,7 @@ function tvtower(): SpriteArt {
   disc(p, 5, 14, 4, 4, '#f4f8ff');
   p.px(3, 12, '#ffffff');
   p.px(7, 16, '#8a96e0');
-  return sprite(canvas, 600);
+  return sprite(canvas);
 }
 
 function floodlight(): SpriteArt {
@@ -773,11 +845,261 @@ function floodlight(): SpriteArt {
       p.rect(5 + c * 7, 10 + r2 * 5, 5, 1, '#e8a010');
     }
   }
-  return sprite(canvas, 800);
+  return sprite(canvas);
 }
 
+// --------------------------------------------------------------------------
+// v3: placas de frenagem, brita, público, casas, margem da represa
+// --------------------------------------------------------------------------
+
+function brakeBoard(label: string): SpriteArt {
+  const W = 36;
+  const H = 46;
+  const { canvas, p } = makeCanvas(W, H);
+  const base = H - 3;
+  cast(p, 4, 28, H, 8, 2);
+  // Haste baixa de aço e sapata.
+  p.rect(16, 26, 4, base - 26, OUT);
+  p.rect(17, 26, 2, base - 26, '#d8dffa');
+  p.vline(17, 26, base - 26, '#ffffff');
+  p.vline(18, 26, base - 26, '#7f8cd8');
+  p.rect(12, base - 2, 12, 3, OUT);
+  p.rect(13, base - 1, 10, 1, '#c8d0f4');
+  // Placa: fundo branco, borda vermelha, número grande.
+  p.rect(1, 1, 34, 26, OUT);
+  p.rect(2, 2, 32, 24, '#ff2a4a');
+  p.hline(2, 2, 32, '#ff8a9e');
+  p.rect(5, 5, 26, 18, '#ffffff');
+  p.hline(5, 5, 26, '#fff4c0');
+  p.hline(5, 22, 26, '#c8d0f4');
+  const tw = textWidth(label, 2);
+  text(p, label, Math.floor((W - tw) / 2) + 1, 8, 2, '#1a1038', '#b4c4f0');
+  p.vline(2, 3, 22, '#ff7a8e');
+  p.vline(33, 3, 22, '#a00c34');
+  return sprite(canvas);
+}
+
+function gravel(): SpriteArt {
+  const W = 160;
+  const H = 18;
+  const { canvas, p } = makeCanvas(W, H);
+  const r = rng(808);
+  // Superfície da caixa de brita, bege com textura de pedras em 3 tons.
+  p.rect(0, 1, W, 10, '#e8d098');
+  p.speckle(0, 1, W, 10, ['#f8e8b8', '#d0b478', '#fff4d0', '#b89a5e'], 0.35, r);
+  for (let i = 0; i < 60; i++) {
+    const x = Math.floor(r() * (W - 3));
+    const y = 2 + Math.floor(r() * 8);
+    p.px(x, y, '#8a6e40');
+    p.px(x + 1, y, '#fff4d0');
+  }
+  // Rastros de pneu na brita.
+  for (const y of [4, 7]) for (let x = 20 + y * 3; x < 130; x += 2) p.px(x, y, '#c8aa6c');
+  p.hline(0, 1, W, '#fffbe0');
+  // Borda frontal (concreto sujo) e faixa de sombra.
+  p.rect(0, 11, W, 5, '#c8b078');
+  p.hline(0, 11, W, '#f4e4b0');
+  p.rect(0, 14, W, 2, '#8a7040');
+  p.speckle(0, 12, W, 3, ['#a88c54', '#e0c888'], 0.3, r);
+  p.rect(0, 16, W, 2, 'rgba(42,16,96,0.35)');
+  p.frame(0, 0, W, 1, OUT);
+  p.hline(0, 16, W, OUT);
+  return sprite(canvas);
+}
+
+function crowd(): SpriteArt {
+  const W = 120;
+  const H = 44;
+  const { canvas, p } = makeCanvas(W, H);
+  const r = rng(909);
+  const fenceTop = 22;
+  // Duas fileiras de gente em pé, a de trás um pouco mais alta e mais escura.
+  for (const [row, y0, dim] of [[0, 8, true], [1, 14, false]] as const) {
+    for (let x = 1 + row * 2; x < W - 4; x += 4) {
+      if (r() < 0.9) person(p, x, y0 + (r() < 0.3 ? 1 : 0), r, dim);
+    }
+  }
+  // Bandeiras do Brasil maiores erguidas.
+  for (const fx of [14, 44, 74, 100]) {
+    p.vline(fx, 0, 16, '#e8e0ff');
+    brFlag(p, fx + 1, 0, 14, 9, (u) => Math.sin(u * 0.6 + fx) * 0.9);
+  }
+  // Braços erguidos extras (aplaudindo).
+  for (let i = 0; i < 12; i++) {
+    const x = 3 + Math.floor(r() * (W - 8));
+    p.px(x, 9, SKIN[Math.floor(r() * 4)]);
+    p.px(x, 8, SKIN[Math.floor(r() * 4)]);
+  }
+  // Alambrado na frente.
+  p.rect(0, fenceTop, W, 18, 'rgba(26,16,56,0.18)');
+  for (let y = fenceTop + 1; y < fenceTop + 14; y++) for (let x = 0; x < W; x++) if ((x + y) % 5 === 0 || (x - y + 500) % 5 === 0) p.px(x, y, (x + y) % 8 < 4 ? '#a8b8f8' : '#7f90e0');
+  for (let x = 2; x < W; x += 24) {
+    p.rect(x - 1, fenceTop - 2, 4, 20, OUT);
+    p.rect(x, fenceTop - 2, 2, 20, '#e0e6ff');
+    p.vline(x, fenceTop - 2, 20, '#ffffff');
+  }
+  p.rect(0, fenceTop - 2, W, 2, OUT);
+  p.hline(0, fenceTop - 2, W, '#ffffff');
+  p.rect(0, fenceTop + 14, W, 6, '#c8d0f4');
+  p.hline(0, fenceTop + 14, W, '#ffffff');
+  p.hline(0, fenceTop + 19, W, '#7f8cd8');
+  p.rect(0, H - 4, W, 4, 'rgba(42,16,96,0.3)');
+  return sprite(canvas);
+}
+
+function house(p: Painter, x: number, base: number, w: number, h: number, wall: [string, string], roof: [string, string, string], seed: number, floors: number): void {
+  const r = rng(seed);
+  const top = base - h;
+  // Corpo: parede iluminada à esquerda e sombra à direita.
+  p.rect(x - 1, top - 1, w + 2, h + 1, OUT);
+  p.rect(x, top, w, h, wall[0]);
+  p.rect(x + Math.ceil(w * 0.68), top, w - Math.ceil(w * 0.68), h, wall[1]);
+  p.vline(x, top, h, '#ffffff');
+  // Janelas e porta.
+  const fh = Math.floor((h - 2) / floors);
+  for (let f = 0; f < floors; f++) {
+    const wy = top + 3 + f * fh;
+    for (let wx = x + 3; wx < x + w - 5; wx += 8) {
+      p.rect(wx - 1, wy - 1, 6, 6, OUT);
+      p.rect(wx, wy, 4, 4, '#7fd4ff');
+      p.px(wx, wy, '#ffffff');
+      p.hline(wx, wy + 3, 4, '#2a82f0');
+      p.rect(wx - 1, wy + 5, 6, 1, wall[1]);
+    }
+  }
+  p.rect(x + 3 + Math.floor(r() * 2), base - 8, 5, 8, OUT);
+  p.rect(x + 4 + Math.floor(r() * 2), base - 7, 3, 7, '#c06a2a');
+  // Telhado cerâmico de duas águas: fileiras de telhas.
+  const rh = 11;
+  for (let k = 0; k < rh; k++) {
+    const inset = Math.floor(k * (w / 2 - 2) / rh);
+    const y = top - 1 - k;
+    p.hline(x - 2 + inset, y, w + 4 - inset * 2, OUT);
+    p.hline(x - 1 + inset, y, w + 2 - inset * 2, k % 3 === 0 ? roof[2] : k % 2 ? roof[0] : roof[1]);
+    for (let tx = x - 1 + inset; tx < x + w + 1 - inset; tx += 3) p.px(tx, y, roof[2]);
+  }
+  p.hline(x - 2, top, w + 4, roof[2]);
+  p.hline(x + 2, top - rh, w - 4, '#fff4c0');
+}
+
+function building(): SpriteArt {
+  const W = 120;
+  const H = 70;
+  const { canvas, p } = makeCanvas(W, H);
+  const base = H - 4;
+  cast(p, 2, W - 8, H - 2, 12, 3);
+  // Casa de dois andares com telhado de telha, casa térrea e prédio baixo com caixa-d'água.
+  house(p, 4, base, 36, 24, ['#fff0c8', '#e8c890'], ['#ff9a3a', '#e8641e', '#a8381a'], 1, 2);
+  house(p, 44, base, 28, 18, ['#c8f0ff', '#8ac4e8'], ['#ff8a3a', '#e05a1e', '#a0301a'], 2, 1);
+  // Prédio de apartamentos baixo (4 andares), laje plana e caixa-d'água.
+  const bx = 78;
+  const bw = 34;
+  const bh = 42;
+  p.rect(bx - 1, base - bh - 1, bw + 2, bh + 1, OUT);
+  p.rect(bx, base - bh, bw, bh, '#ffd0a8');
+  p.rect(bx + 24, base - bh, bw - 24, bh, '#e8a070');
+  p.vline(bx, base - bh, bh, '#fff0e0');
+  for (let f = 0; f < 4; f++) {
+    const y = base - bh + 4 + f * 9;
+    for (let x = bx + 3; x < bx + bw - 4; x += 8) {
+      p.rect(x - 1, y - 1, 6, 6, OUT);
+      p.rect(x, y, 4, 4, f % 2 ? '#7fd4ff' : '#bff0ff');
+      p.px(x, y, '#ffffff');
+    }
+    p.hline(bx, y + 6, bw, '#c0784a');
+    if (f % 2 === 0) p.rect(bx + 20, y - 1, 6, 1, '#ff2a4a');
+  }
+  p.rect(bx - 2, base - bh - 3, bw + 4, 3, '#e0e6ff');
+  p.hline(bx - 2, base - bh - 3, bw + 4, '#ffffff');
+  p.rect(bx + 4, base - bh - 10, 9, 7, OUT);
+  p.rect(bx + 5, base - bh - 9, 7, 5, '#c8d4ff');
+  p.vline(bx + 5, base - bh - 9, 5, '#ffffff');
+  p.rect(0, base, W - 4, 4, '#3fbf3f');
+  p.hline(0, base, W - 4, '#9af07a');
+  // Muro e arbusto na frente.
+  p.rect(2, base - 4, 76, 4, '#f4f0e0');
+  p.hline(2, base - 4, 76, '#ffffff');
+  blob(p, 108, base - 3, 7, 5, BUSH_PAL, 12, 7, 0.2, 0, 0.45);
+  return sprite(canvas);
+}
+
+function pond(): SpriteArt {
+  const W = 120;
+  const H = 44;
+  const { canvas, p } = makeCanvas(W, H);
+  const r = rng(1010);
+  const top = 12;
+  const bot = 30;
+  // Margem de trás: moita baixa.
+  for (let x = 0; x < W; x += 8) blob(p, x + 4, top - 1, 7, 5, BUSH_PAL, 30 + x, 7, 0.2, 0, 0.45);
+  // Água em bandas com dithering e dois tons de brilho.
+  for (let y = top; y < bot; y++) {
+    const t = (y - top) / (bot - top);
+    for (let x = 0; x < W; x++) {
+      const cols = ['#1a96ff', '#38b4ff', '#68d0ff', '#8fe0ff'];
+      const k = t * 3;
+      const i = Math.floor(k);
+      p.px(x, y, cols[Math.min(3, i + (k - i > bayer(x, y) ? 1 : 0))]);
+    }
+  }
+  for (let i = 0; i < 40; i++) {
+    const y = top + 1 + Math.floor(r() * (bot - top - 2));
+    const x = Math.floor(r() * (W - 8));
+    const len = 2 + Math.floor(r() * 4);
+    p.hline(x, y, len, r() < 0.5 ? '#ffffff' : '#c8f4ff');
+  }
+  // Margem próxima com grama.
+  for (let x = 0; x < W; x++) {
+    const hh = 3 + Math.round(Math.sin(x * 0.25) * 1.2);
+    p.rect(x, bot, 1, 2, '#f0dca8');
+    for (let y = bot + 2; y < H - 1; y++) p.px(x, y, y - bot < hh ? '#5ae05a' : '#2fb24a');
+  }
+  p.hline(0, H - 1, W, '#14803e');
+  // Taboas: haste verde e espiga marrom, em tufos de alturas variadas.
+  for (let x = 4; x < W - 2; x += 6 + Math.floor(r() * 5)) {
+    const hh = 12 + Math.floor(r() * 12);
+    p.vline(x, bot + 2 - hh, hh, '#14803e');
+    p.vline(x + 1, bot + 2 - hh + 3, hh - 3, '#2fb24a');
+    if (r() < 0.65) {
+      p.rect(x - 1, bot + 2 - hh, 3, 6, OUT);
+      p.rect(x, bot + 2 - hh + 1, 1, 4, '#b8702a');
+      p.px(x, bot + 2 - hh + 1, '#e8a060');
+    }
+    p.hline(x - 3, bot + 2 - Math.floor(hh * 0.6), 3, '#5ae05a');
+    p.hline(x + 2, bot + 2 - Math.floor(hh * 0.5), 3, '#14803e');
+  }
+  // Flores e juncos baixos.
+  for (let i = 0; i < 18; i++) p.px(Math.floor(r() * W), bot + 3 + Math.floor(r() * 8), r() < 0.5 ? '#ffffff' : '#ffdf00');
+  return sprite(canvas);
+}
+
+/** Largura REAL em metros de cada sprite (contrato v3). */
+export const PROP_WIDTH_METERS: Record<PropKind, number> = {
+  grandstand: 40,
+  floodlight: 2,
+  tree: 8,
+  ipe: 7,
+  billboard: 12,
+  marshal: 3,
+  tyrewall: 6,
+  pitbuilding: 60,
+  lake: 40,
+  skyline: 80,
+  bush: 2.5,
+  fence: 10,
+  flag: 2.5,
+  tvtower: 4,
+  brake300: 1.6,
+  brake200: 1.6,
+  brake100: 1.6,
+  gravel: 20,
+  crowd: 15,
+  building: 15,
+  pond: 30,
+};
+
 export function buildProps(): Record<PropKind, SpriteArt> {
-  return {
+  const made: Record<PropKind, SpriteArt> = {
     grandstand: grandstand(),
     floodlight: floodlight(),
     tree: tree(),
@@ -792,8 +1114,14 @@ export function buildProps(): Record<PropKind, SpriteArt> {
     fence: fence(),
     flag: flag(),
     tvtower: tvtower(),
-    // v3: provisórios até a arte nova (feat/v3-arte).
-    brake300: billboard(), brake200: billboard(), brake100: billboard(),
-    gravel: lake(), crowd: grandstand(), building: skyline(), pond: lake(),
+    brake300: brakeBoard('300'),
+    brake200: brakeBoard('200'),
+    brake100: brakeBoard('100'),
+    gravel: gravel(),
+    crowd: crowd(),
+    building: building(),
+    pond: pond(),
   };
+  for (const k of Object.keys(made) as PropKind[]) made[k].widthMeters = PROP_WIDTH_METERS[k];
+  return made;
 }
