@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "jest"
+    "lint": "tools/lint/node_modules/.bin/eslint .",
+    "postinstall": "npm ci --prefix tools/lint",
+    "test": "jest --coverage"
   },
   "dependencies": {
     "@fontsource/pixelify-sans": "^5.3.0"
