@@ -7,8 +7,8 @@ import { bayer, lerpHex } from './util';
 const OUT = '#1a1038';
 const SHADOW = '#2a1060';
 
-function sprite(canvas: HTMLCanvasElement, worldWidth: number): SpriteArt {
-  return { canvas, worldWidth };
+function sprite(canvas: HTMLCanvasElement, widthMeters: number): SpriteArt {
+  return { canvas, widthMeters };
 }
 
 /** Sombra projetada no chão para a direita (luz vem do alto à esquerda). */
@@ -792,5 +792,8 @@ export function buildProps(): Record<PropKind, SpriteArt> {
     fence: fence(),
     flag: flag(),
     tvtower: tvtower(),
+    // v3: provisórios até a arte nova (feat/v3-arte).
+    brake300: billboard(), brake200: billboard(), brake100: billboard(),
+    gravel: lake(), crowd: grandstand(), building: skyline(), pond: lake(),
   };
 }

@@ -13,10 +13,18 @@
 export const VIEW_W = 480;
 export const VIEW_H = 270;
 
-/** Comprimento de um segmento de pista em unidades de mundo. */
-export const SEGMENT_LENGTH = 200;
+/* v3 — ESCALA REAL. Todas as medidas de jogo partem de METROS.
+   O motor pode recalibrar os VALORES das três constantes abaixo (não os tipos)
+   para a projeção ficar boa, mas a relação com metros deve ser respeitada. */
+/** Unidades de mundo por metro. */
+export const UNITS_PER_METER = 40;
+/** Um segmento = SEGMENT_METERS de pista real. */
+export const SEGMENT_METERS = 5;
+export const SEGMENT_LENGTH = SEGMENT_METERS * UNITS_PER_METER;
+/** Meia largura da pista, em metros (Interlagos tem ~12–15 m de largura). */
+export const ROAD_HALF_WIDTH_METERS = 7;
 /** Meia largura da pista em unidades de mundo (offset x = ±1 é a borda). */
-export const ROAD_WIDTH = 1800;
+export const ROAD_WIDTH = ROAD_HALF_WIDTH_METERS * UNITS_PER_METER;
 
 // --------------------------------------------------------------------------
 // Pista (src/track/*)
@@ -37,7 +45,14 @@ export type PropKind =
   | 'bush'            // arbusto arredondado baixo
   | 'fence'           // alambrado de proteção
   | 'flag'            // mastro com bandeira do Brasil tremulando
-  | 'tvtower';        // torre de câmera de TV
+  | 'tvtower'         // torre de câmera de TV
+  | 'brake300'        // placa de frenagem "300" antes das curvas
+  | 'brake200'
+  | 'brake100'
+  | 'gravel'          // caixa de brita (sprite baixo e largo, no chão)
+  | 'crowd'           // público em pé no alambrado / morro
+  | 'building'        // casas/prédios baixos do bairro em volta
+  | 'pond';           // margem da represa com vegetação
 
 export interface PropPlacement {
   kind: PropKind;
@@ -59,6 +74,25 @@ export interface TrackSection {
   props?: { every: number; place: PropPlacement[] }[];
 }
 
+/** Geometria real do circuito (origem OSM + SRTM), em metros, sentido de corrida. */
+export interface TrackGeometry {
+  name: string;
+  /** Polilinha fechada da linha central: x = leste, y = norte, z = altitude (m). */
+  points: { x: number; y: number; z: number }[];
+  /** Comprimento total em metros (deve ficar perto de 4309). */
+  lengthMeters: number;
+  /** Curvas nomeadas por distância (m) do ápice a partir da linha de chegada. */
+  corners: { turn: number; name: string; apexMeters: number }[];
+}
+
+/** Faixas de cenário por distância: o motor espalha props conforme a zona. */
+export interface SceneryZone {
+  fromMeters: number;
+  toMeters: number;
+  props: { everyMeters: number; place: PropPlacement[] }[];
+}
+
+/** @deprecated v1/v2 — substituído por TrackGeometry + SceneryZone. */
 export interface TrackDef {
   name: string;
   /** Sentido real: Interlagos é anti-horário. */
@@ -78,6 +112,10 @@ export interface Segment {
   props: PropPlacement[];
   /** Zebras (kerbs) nas bordas, ativas em curvas. */
   kerb: boolean;
+  /** v3: distância em metros do início do segmento desde a linha de chegada. */
+  meters?: number;
+  /** v3: raio de curva aproximado em metros (Infinity em reta). */
+  radiusMeters?: number;
 }
 
 // --------------------------------------------------------------------------
@@ -87,8 +125,9 @@ export interface Segment {
 /** Todas as artes são HTMLCanvasElement desenhados por código, pixel a pixel. */
 export interface SpriteArt {
   canvas: HTMLCanvasElement;
-  /** Largura em unidades de mundo quando o sprite está a escala 1. */
-  worldWidth: number;
+  /** v3: largura REAL do objeto em metros (carro de F1 = 2,0 m; arquibancada ~40 m...).
+   *  O motor converte com UNITS_PER_METER. */
+  widthMeters: number;
   /** Se emite luz, cor e raio (px na tela a escala 1) para o glowmap. */
   glow?: { color: string; radius: number; dy: number };
 }
@@ -116,9 +155,9 @@ export interface CarSprites {
 export interface ArtBundle {
   props: Record<PropKind, SpriteArt>;
   /** Carro do jogador (carmim/ciano, maior detalhe), desenhado fixo na parte
-   *  inferior central da tela; canvas ~112x56. */
+   *  inferior central da tela; v3: canvas 72x40, desenhado 1:1 (sem escala). */
   playerCar: CarSprites;
-  /** 5 rivais de escuderias fictícias, mesmas 3 poses; canvas ~112x56 (escalados em runtime). */
+  /** v3: 9 rivais de escuderias fictícias (grid de 10), mesmas 3 poses; canvas 72x40. */
   rivalCars: CarSprites[];
   /** Camadas de fundo, todas com largura 960 (parallax horizontal, repetem). */
   sky: HTMLCanvasElement;        // 960x270: gradiente diurno + sol com raios (opaco)

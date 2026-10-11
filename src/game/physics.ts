@@ -99,6 +99,8 @@ export const PROP_RADIUS: Record<PropKind, number> = {
   fence: 0.1,
   flag: 0.1,
   tvtower: 0.2,
+  brake300: 0.1, brake200: 0.1, brake100: 0.1,
+  gravel: 0, crowd: 0, building: 0, pond: 0,
 };
 const CAR_RADIUS = 0.12;
 

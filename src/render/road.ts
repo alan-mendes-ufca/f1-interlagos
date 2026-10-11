@@ -323,7 +323,7 @@ export class RoadRenderer {
 
   private drawSprite(ctx: CanvasRenderingContext2D, sp: SpriteArt, cx: number, groundY: number, scale: number, clipY: number, fog: number): void {
     const c = sp.canvas;
-    const destW = sp.worldWidth * scale * (VIEW_W / 2);
+    const destW = sp.widthMeters * scale * (VIEW_W / 2);
     if (destW < 1 || destW > VIEW_W * 4) return;
     const destH = (destW * c.height) / c.width;
     const top = groundY - destH;
