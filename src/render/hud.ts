@@ -1,6 +1,7 @@
-import { VIEW_H, VIEW_W } from '../contracts';
+import { VIEW_H, VIEW_W, type ArtBundle } from '../contracts';
 import type { Race } from '../game/race';
 import { toKmh } from '../game/physics';
+import { drawMinimap, paintColor } from './minimap';
 import type { GlowPoint } from './road';
 
 /** HUD em pixel art: painéis azul-marinho translúcidos, borda clara e números brancos grandes. */
@@ -133,7 +134,30 @@ function bar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, fra
   ctx.fillRect(x + Math.round(w * frac) - 1, y - 2, 3, 9);
 }
 
-export function drawHud(ctx: CanvasRenderingContext2D, race: Race, muted: boolean, clock = 0): GlowPoint[] {
+export interface HudOpts {
+  art?: ArtBundle;
+  /** Indicador "FREIE!" ligado (tecla B desliga). */
+  brakeHint?: boolean;
+}
+
+const RIVAL_FALLBACK = ['#ff8a2a', '#2ad0ff', '#f5e03a', '#7dff5a', '#c05aff', '#ff5ab4', '#ffffff', '#3a7bff', '#ffb36b'];
+
+function rivalColors(race: Race, art?: ArtBundle): string[] {
+  return race.state.rivals.map((r, i) => paintColor(art?.rivalCars[r.sprite % (art.rivalCars.length || 1)]?.center.canvas, RIVAL_FALLBACK[i % RIVAL_FALLBACK.length]));
+}
+
+/** Aviso discreto de frenagem: curva à frente abaixo da velocidade atual e já na distância de frenagem. */
+function drawBrakeHint(ctx: CanvasRenderingContext2D, race: Race, clock: number): void {
+  const a = race.advice;
+  if (!a || !a.brake) return;
+  const cx = VIEW_W / 2;
+  const blink = Math.floor(clock * 6) % 2 === 0;
+  panel(ctx, cx - 70, 38, 140, 30, 5);
+  text(ctx, 'FREIE!', cx, 39, 17, blink ? '#ff5a4a' : '#ffd630', 'center', 700);
+  text(ctx, `curva a ${Math.round(a.distance / 10) * 10} m · ${Math.round(a.limitKmh / 5) * 5} km/h`, cx, 57, 9, SOFT, 'center');
+}
+
+export function drawHud(ctx: CanvasRenderingContext2D, race: Race, muted: boolean, clock = 0, opts: HudOpts = {}): GlowPoint[] {
   const st = race.state;
   const glows: GlowPoint[] = [];
   ctx.save();
@@ -165,6 +189,22 @@ export function drawHud(ctx: CanvasRenderingContext2D, race: Race, muted: boolea
   text(ctx, fmtClock(st.time), VIEW_W - 12, 10, 17, WHITE, 'right', 700);
   text(ctx, 'MELHOR', VIEW_W - 130, 36, 11, SOFT);
   text(ctx, st.bestLap === null ? '-:--.---' : fmtTime(st.bestLap), VIEW_W - 12, 34, 14, '#ffe27a', 'right', 700);
+
+  // minimapa abaixo do cronômetro
+  if (race.track.geo) {
+    const colors = rivalColors(race, opts.art);
+    drawMinimap(ctx, VIEW_W - 136, 60, {
+      geo: race.track.geo,
+      trackLength: race.track.length,
+      player: st.player,
+      rivals: st.rivals.map((r, i) => ({ z: r.z, color: colors[i] })),
+      sectionName: st.sectionName,
+      clock,
+      panel: (c, x, y, w, h) => panel(c, x, y, w, h),
+      label: (c, str, x, y) => text(c, str, x, y, 10, SOFT, 'center'),
+    });
+  }
+  if (opts.brakeHint !== false && st.phase === 'racing') drawBrakeHint(ctx, race, clock);
 
   // inferior direito: velocímetro
   panel(ctx, VIEW_W - 100, VIEW_H - 92, 94, 86);
@@ -209,7 +249,7 @@ function drawTitle(ctx: CanvasRenderingContext2D, clock: number): void {
   text(ctx, 'F1 INTERLAGOS', cx, 70, 38, WHITE, 'center', 700);
   text(ctx, 'Autodromo José Carlos Pace', cx, 112, 12, SOFT, 'center');
   if (Math.floor(clock * 2) % 2 === 0) text(ctx, 'ENTER para correr', cx, 134, 20, '#ffe27a', 'center', 700);
-  text(ctx, 'Setas ou WASD dirigem  -  Espaço: freio de mão  -  M: mudo', cx, 166, 9, SOFT, 'center');
+  text(ctx, 'Setas/WASD dirigem  -  Espaço: freio de mão  -  M: mudo  -  B: aviso de frenagem', cx, 166, 9, SOFT, 'center');
 }
 
 function drawResult(ctx: CanvasRenderingContext2D, race: Race): void {

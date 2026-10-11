@@ -48,11 +48,11 @@ for (const [name, c] of all) {
   const g = document.createElement('div');
   g.className = 'cargroup';
   carsRow.append(g);
-  for (const pose of ['left', 'center', 'right'] as const) add(g, `${name} ${pose} (wu ${c[pose].worldWidth})`, c[pose].canvas);
+  for (const pose of ['left', 'center', 'right'] as const) add(g, `${name} ${pose} (wu ${c[pose].widthMeters})`, c[pose].canvas);
 }
 
 const propsRow = section('Props');
 for (const kind of Object.keys(art.props) as (keyof typeof art.props)[]) {
   const s = art.props[kind];
-  add(propsRow, `${kind} (wu ${s.worldWidth})`, s.canvas);
+  add(propsRow, `${kind} (wu ${s.widthMeters})`, s.canvas);
 }

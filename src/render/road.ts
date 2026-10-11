@@ -1,19 +1,23 @@
-import { ROAD_WIDTH, SEGMENT_LENGTH, VIEW_H, VIEW_W, type ArtBundle, type CarSprites, type RaceState, type RoadPalette, type Segment, type SpriteArt } from '../contracts';
+import { ROAD_WIDTH, SEGMENT_LENGTH, SEGMENT_METERS, UNITS_PER_METER, VIEW_H, VIEW_W, type ArtBundle, type CarSprites, type RaceState, type RoadPalette, type Segment, type SpriteArt } from '../contracts';
 import { MAX_SPEED } from '../game/physics';
 import { carBounce, poseForSteer, rivalSteer } from './pose';
 
-/** Horizonte a ~40% do topo. */
-export const HORIZON = 108;
-/** Distância da câmera atrás do carro e altura acima da pista. */
-export const CAM_BACK = 700;
-const CAM_H = 2800;
-/** Profundidade da projeção: FOV largo para as curvas ficarem legíveis. */
-const CAM_DEPTH = 0.2755;
-const DRAW = 240;
-const NEAR = 20;
-/** Largura em px do carro do jogador (e referência de escala dos rivais em CAM_BACK). */
-const CAR_W = 112;
-const CAR_BASE_Y = VIEW_H - 8;
+/** Horizonte (px a partir do topo). */
+export const HORIZON = 90;
+/** Câmera 11 m atrás do carro e 7,5 m acima da pista. */
+export const CAM_BACK = 11 * UNITS_PER_METER;
+const CAM_H = 7.5 * UNITS_PER_METER;
+/** Distância focal em px (FOV horizontal ~92°). Vale para x e y: projeção sem distorção. */
+export const FOCAL = 250;
+/** Distância de desenho: 130 segmentos de 5 m = 650 m. */
+const DRAW = 130;
+const NEAR = 2 * UNITS_PER_METER;
+/** Base do carro do jogador na tela: onde o chão a CAM_BACK da câmera é projetado. */
+const CAR_BASE_Y = Math.round(HORIZON + (FOCAL * CAM_H) / CAM_BACK);
+/** Segment.curve (~180/R) -> deslocamento lateral por segmento² em unidades de mundo.
+ *  Fisicamente 25/R metros por segmento²; o fator visual deixa o grampo legível sem sair da tela. */
+export const CURVE_VISUAL = 1.15;
+const CURVE_WORLD = ((SEGMENT_METERS * SEGMENT_METERS * UNITS_PER_METER) / 180) * CURVE_VISUAL;
 
 type RGB = [number, number, number];
 const hex = (h: string): RGB => {
@@ -107,7 +111,7 @@ export class RoadRenderer {
     if (dz < 0 || dz > 2000) dz = 0;
     this.lastZ = player.z;
     const pSeg = segments[Math.floor(player.z / SEGMENT_LENGTH) % N];
-    const dc = pSeg.curve * (dz / SEGMENT_LENGTH);
+    const dc = pSeg.curve * (dz / SEGMENT_LENGTH) * 0.45;
     this.off[0] += dc * 0.04;
     this.off[1] += dc * 0.12;
     this.off[2] += dc * 0.35;
@@ -129,7 +133,7 @@ export class RoadRenderer {
 
     // projeção
     let x = 0;
-    let dx = -(baseSeg.curve * pct);
+    let dx = -(baseSeg.curve * CURVE_WORLD * pct);
     let maxY = VIEW_H + 8;
     const half = VIEW_W / 2;
     const proj = this.proj;
@@ -140,24 +144,24 @@ export class RoadRenderer {
       const zw2 = zw1 + SEGMENT_LENGTH;
       const z1 = Math.max(NEAR, zw1);
       const z2 = Math.max(NEAR + 1, zw2);
-      const s1 = CAM_DEPTH / z1;
-      const s2 = CAM_DEPTH / z2;
+      const s1 = FOCAL / z1;
+      const s2 = FOCAL / z2;
       p.s1 = s1;
-      p.x1 = half + s1 * (-x - camX) * half;
-      p.y1 = HORIZON - s1 * (seg.y1 - camY) * (VIEW_H / 2);
-      p.w1 = s1 * ROAD_WIDTH * half;
-      p.x2 = half + s2 * (-(x + dx) - camX) * half;
-      p.y2 = HORIZON - s2 * (seg.y2 - camY) * (VIEW_H / 2);
-      p.w2 = s2 * ROAD_WIDTH * half;
+      p.x1 = half + s1 * (x - camX);
+      p.y1 = HORIZON - s1 * (seg.y1 - camY);
+      p.w1 = s1 * ROAD_WIDTH;
+      p.x2 = half + s2 * (x + dx - camX);
+      p.y2 = HORIZON - s2 * (seg.y2 - camY);
+      p.w2 = s2 * ROAD_WIDTH;
       p.fog = 1 - Math.exp(-Math.pow(n / DRAW, 2) * 4.5);
       p.ok = zw2 > NEAR + 1 && p.y2 < p.y1 && p.y2 < maxY;
       p.clip = maxY;
       if (p.ok) {
         this.drawSegment(ctx, seg, p, maxY);
-        maxY = p.y2;
+        maxY = Math.round(p.y2);
       }
       x += dx;
-      dx += seg.curve;
+      dx += seg.curve * CURVE_WORLD;
     }
 
     // rivais por segmento (rel = distância à câmera)
@@ -213,11 +217,10 @@ export class RoadRenderer {
     const sx = p.x1 + (p.x2 - p.x1) * t;
     const sy = p.y1 + (p.y2 - p.y1) * t;
     const w = p.w1 + (p.w2 - p.w1) * t;
-    const scale = CAM_BACK / rel;
     const car = art.rivalCars[r.sprite % art.rivalCars.length];
     if (!car) return;
     const sprite = car[poseForSteer(rivalSteer(seg.curve, this.latV[ri] ?? 0))];
-    this.drawCar(ctx, sprite, sx + w * r.x, sy, CAR_W * scale, p.clip, p.fog);
+    this.drawCar(ctx, sprite, sx + w * r.x, sy, sprite.widthMeters * UNITS_PER_METER * (FOCAL / rel), p.clip, p.fog);
   }
 
   private drawPlayer(ctx: CanvasRenderingContext2D, race: RaceState, opts: RenderOpts): void {
@@ -227,15 +230,16 @@ export class RoadRenderer {
     const sp = Math.max(0, Math.min(1, st.speed / MAX_SPEED));
     const seg = this.segments[Math.floor(st.z / SEGMENT_LENGTH) % this.segments.length];
     // deslocamento lateral leve: a curva empurra o carro para fora e o esterço puxa para dentro
-    const cx = VIEW_W / 2 + Math.round(-seg.curve * sp * 2 + steer * 5);
+    const carW = car.center.widthMeters * UNITS_PER_METER * (FOCAL / CAM_BACK);
+    const cx = VIEW_W / 2 + Math.round(-seg.curve * sp * 0.8 + steer * 3);
     const bounce = carBounce(!!opts.onKerb, !!opts.offroad, sp, opts.time ?? 0);
     const baseY = CAR_BASE_Y - Math.round(bounce);
     // sombra elíptica
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.beginPath();
-    ctx.ellipse(cx, CAR_BASE_Y - 1, CAR_W * 0.46, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, CAR_BASE_Y - 1, carW * 0.5, Math.max(2, carW * 0.07), 0, 0, Math.PI * 2);
     ctx.fill();
-    this.drawCar(ctx, car[poseForSteer(steer)], cx, baseY, CAR_W, VIEW_H + 8, 0);
+    this.drawCar(ctx, car[poseForSteer(steer)], cx, baseY, carW, VIEW_H + 8, 0);
   }
 
   private drawCar(ctx: CanvasRenderingContext2D, sp: SpriteArt, cx: number, groundY: number, destW: number, clipY: number, fog: number): void {
@@ -323,8 +327,8 @@ export class RoadRenderer {
 
   private drawSprite(ctx: CanvasRenderingContext2D, sp: SpriteArt, cx: number, groundY: number, scale: number, clipY: number, fog: number): void {
     const c = sp.canvas;
-    const destW = sp.worldWidth * scale * (VIEW_W / 2);
-    if (destW < 1 || destW > VIEW_W * 4) return;
+    const destW = sp.widthMeters * UNITS_PER_METER * scale;
+    if (destW < 1 || destW > VIEW_W * 8) return;
     const destH = (destW * c.height) / c.width;
     const top = groundY - destH;
     const left = cx - destW / 2;

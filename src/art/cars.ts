@@ -248,7 +248,7 @@ function makePose(L: Livery, yaw: -1 | 0 | 1): SpriteArt {
   const { canvas, p } = makeCanvas(W, H);
   drawCar(p, L, { yaw });
   // dy: deslocamento vertical do glow em relação ao centro do sprite (luz de chuva em y~48 de 56).
-  return { canvas, worldWidth: 1000, glow: { color: L.rainGlow, radius: 10, dy: 48 - H / 2 } };
+  return { canvas, widthMeters: 1000, glow: { color: L.rainGlow, radius: 10, dy: 48 - H / 2 } };
 }
 
 function carSprites(L: Livery): CarSprites {
