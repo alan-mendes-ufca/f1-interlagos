@@ -1,19 +1,17 @@
 import '@fontsource/pixelify-sans/400.css';
 import '@fontsource/pixelify-sans/600.css';
 import './style.css';
-import { VIEW_H, VIEW_W, type ArtBundle, type Soundtrack, type TrackDef } from './contracts';
+import { VIEW_H, VIEW_W, type ArtBundle, type Soundtrack } from './contracts';
 import { MAX_SPEED } from './game/physics';
 import { Input } from './game/input';
 import { Race } from './game/race';
-import { buildTrack } from './track/build';
-import { sampleTrack } from './track/sample';
+import { buildInterlagos } from './track/interlagos';
 import { drawHud, cameraShake } from './render/hud';
 import { Lights } from './render/lights';
 import { RoadRenderer } from './render/road';
 
 // Módulos opcionais: import.meta.glob não quebra o build quando o arquivo ainda não existe.
 const artMods = import.meta.glob('./art/index.ts');
-const trackMods = import.meta.glob('./track/interlagos.ts');
 const audioMods = import.meta.glob('./audio/index.ts');
 
 const noopSoundtrack = (): Soundtrack => ({
@@ -52,25 +50,10 @@ async function loadArt(): Promise<ArtBundle> {
   throw new Error('src/art/index.ts ausente');
 }
 
-async function loadTrack(): Promise<TrackDef> {
-  try {
-    const load = trackMods['./track/interlagos.ts'];
-    if (load) {
-      const mod = (await load()) as Record<string, unknown>;
-      for (const v of [mod.default, ...Object.values(mod)]) {
-        if (v && typeof v === 'object' && Array.isArray((v as TrackDef).sections)) return v as TrackDef;
-      }
-    }
-  } catch (e) {
-    console.warn('Traçado real indisponível, usando amostra', e);
-  }
-  return sampleTrack;
-}
-
 async function main(): Promise<void> {
   await document.fonts?.load("16px 'Pixelify Sans'").catch(() => undefined);
-  const [art, def, sound] = await Promise.all([loadArt(), loadTrack(), loadSoundtrack()]);
-  const track = buildTrack(def);
+  const [art, sound] = await Promise.all([loadArt(), loadSoundtrack()]);
+  const track = buildInterlagos();
 
   const host = document.getElementById('game')!;
   const stage = document.createElement('div');
@@ -95,6 +78,7 @@ async function main(): Promise<void> {
   const input = new Input();
   const race = new Race(track);
   const road = new RoadRenderer(track.segments, track.length, art);
+  if (import.meta.env.DEV) (window as unknown as { __race: Race }).__race = race; // depuração e capturas
 
   const trackOf = (phase: string): 'menu' | 'race' | 'finish' => (phase === 'grid' ? 'menu' : phase === 'finished' ? 'finish' : 'race');
   let started = false;
@@ -152,7 +136,7 @@ async function main(): Promise<void> {
       onKerb: race.dyn.onKerb,
       offroad: race.dyn.offroad,
     });
-    const hudGlows = drawHud(ctx, race, input.s.muted, clock);
+    const hudGlows = drawHud(ctx, race, input.s.muted, clock, { art, brakeHint: input.s.brakeHint });
     lights.draw(race.state.phase === 'grid' ? [] : glows, hudGlows);
     requestAnimationFrame(frame);
   };

@@ -1,15 +1,21 @@
-import { SEGMENT_LENGTH, type RaceState, type Segment } from '../contracts';
-import { createRival, RIVAL_DEFS, stepRival, type Rival } from './ai';
+import { SEGMENT_LENGTH, UNITS_PER_METER, type RaceState, type Segment, type TrackGeometry } from '../contracts';
+import { createRival, makeAiTrack, RIVAL_DEFS, stepRival, type AiTrack, type Rival } from './ai';
 import type { InputState } from './input';
-import { collideCars, collideProps, createDynamics, gearForSpeed, rpmFor, stepPlayer, type Controls, type Dynamics } from './physics';
+import { collideCars, collideProps, createDynamics, gearForSpeed, rpmFor, stepPlayer, toMs, type Controls, type Dynamics } from './physics';
+import { brakeAdvice, cornerLimits, type BrakeAdvice } from './profile';
 
 export interface TrackData {
   segments: Segment[];
   length: number;
+  /** Geometria real (para o minimapa). */
+  geo?: TrackGeometry;
 }
 
 const LIGHT_HOLD_MIN = 0.7;
 const LIGHT_HOLD_VAR = 1.0;
+/** Grid de 10 carros; o jogador larga em 8º (índice 7). */
+export const GRID_SIZE = 10;
+export const PLAYER_GRID_SLOT = 7;
 
 export class Race {
   state!: RaceState;
@@ -17,32 +23,44 @@ export class Race {
   rivals!: Rival[];
   /** Luzes vermelhas acesas (0..5) durante a largada. */
   lights = 0;
-  /** Posição atual do jogador (1..6). */
-  position = 6;
+  /** Posição atual do jogador (1..10). */
+  position = PLAYER_GRID_SLOT + 1;
   /** Tempo da volta em andamento. */
   lapTime = 0;
   /** Último steer aplicado (-1..1), para o volante. */
   steer = 0;
   /** Houve batida neste passo (para áudio futuro). */
   crashed = false;
+  /** Aviso de frenagem à frente (HUD "FREIE!"); null se não há curva relevante. */
+  advice: BrakeAdvice | null = null;
   finishOrder: string[] = [];
+  readonly ai: AiTrack;
+  private readonly limits: number[];
   private lapStart = 0;
   private cdTime = 0;
   private hold = 1;
   private finishTime = new Map<CarStateKey, number>();
 
   constructor(readonly track: TrackData, readonly totalLaps = 3) {
+    this.ai = makeAiTrack(track.segments);
+    this.limits = cornerLimits(track.segments);
     this.reset();
   }
 
   reset(): void {
     const L = this.track.length;
-    const slot = (k: number) => ({ x: k % 2 === 0 ? -0.42 : 0.42, z: L - 400 - Math.floor(k / 2) * 700 - (k % 2) * 330 });
-    this.rivals = RIVAL_DEFS.map((_, i) => {
-      const s = slot(i);
-      return createRival(i, s.z, s.x);
+    // grade 2 a 2, escalonada: 8 m entre filas de carros, pole na esquerda
+    const slot = (k: number) => ({
+      x: k % 2 === 0 ? -0.35 : 0.35,
+      z: L - 6 * UNITS_PER_METER - k * 8 * UNITS_PER_METER,
     });
-    const ps = slot(5);
+    let g = 0;
+    this.rivals = RIVAL_DEFS.map((_, i) => {
+      if (g === PLAYER_GRID_SLOT) g++;
+      const s = slot(g++);
+      return createRival(i, s.z, s.x, this.ai);
+    });
+    const ps = slot(PLAYER_GRID_SLOT);
     this.state = {
       player: { z: ps.z, x: ps.x, speed: 0, lap: 0, sprite: -1, name: 'Você', finished: false },
       rivals: this.rivals.map((r) => r.car),
@@ -57,13 +75,14 @@ export class Race {
     };
     this.dyn = createDynamics();
     this.lights = 0;
-    this.position = 6;
+    this.position = PLAYER_GRID_SLOT + 1;
     this.lapTime = 0;
     this.lapStart = 0;
     this.cdTime = 0;
     this.finishTime.clear();
     this.finishOrder = [];
     this.steer = 0;
+    this.advice = null;
   }
 
   /** Passo fixo de simulação. */
@@ -105,18 +124,18 @@ export class Race {
     if (!racing && !finished) ctrl.brake = 1;
     if (finished) ctrl.steer = Math.max(-1, Math.min(1, -p.x));
     this.steer += (ctrl.steer - this.steer) * Math.min(1, dt * 10);
+    ctrl.steer = this.steer;
     const seg = this.segAt(p.z);
     stepPlayer(p, this.dyn, ctrl, dt, seg);
     if (collideProps(p, this.dyn, this.track.segments)) this.crashed = true;
 
     // rivais
-    for (let i = 0; i < this.rivals.length; i++) {
-      const r = this.rivals[i];
+    for (const r of this.rivals) {
       const others = [p, ...this.rivals.filter((o) => o !== r).map((o) => o.car)];
-      stepRival(r, others, this.track.segments, this.track.length, dt, racing || finished);
+      stepRival(r, others, this.ai, this.track.length, dt, racing || finished);
     }
     if (racing || finished) {
-      for (const r of this.rivals) if (collideCars(p, r.car, this.track.length)) { this.dyn.crashTimer = Math.max(this.dyn.crashTimer, 0.5); this.crashed = true; }
+      for (const r of this.rivals) if (collideCars(p, r.car, this.track.length)) { this.dyn.crashTimer = Math.max(this.dyn.crashTimer, 0.3); this.crashed = true; }
       for (let i = 0; i < this.rivals.length; i++) for (let j = i + 1; j < this.rivals.length; j++) collideCars(this.rivals[i].car, this.rivals[j].car, this.track.length);
     }
 
@@ -129,6 +148,7 @@ export class Race {
     st.gear = gearForSpeed(p.speed);
     st.rpm = rpmFor(p.speed, st.gear);
     this.position = this.computePosition();
+    this.advice = racing ? brakeAdvice(this.track.segments, this.limits, p.z, toMs(p.speed)) : null;
   }
 
   private segAt(z: number): Segment {

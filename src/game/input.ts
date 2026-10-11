@@ -8,10 +8,12 @@ export interface InputState {
   startPressed: boolean;
   mutePressed: boolean;
   muted: boolean;
+  /** Aviso "FREIE!" ligado; a tecla B alterna. */
+  brakeHint: boolean;
 }
 
 export class Input {
-  readonly s: InputState = { left: false, right: false, up: false, down: false, space: false, startPressed: false, mutePressed: false, muted: false };
+  readonly s: InputState = { left: false, right: false, up: false, down: false, space: false, startPressed: false, mutePressed: false, muted: false, brakeHint: true };
 
   constructor(target: Window = window) {
     target.addEventListener('keydown', (e) => this.set(e, true));
@@ -31,6 +33,7 @@ export class Input {
       case 'Space': s.space = down; break;
       case 'Enter': if (down && !e.repeat) s.startPressed = true; break;
       case 'KeyM': if (down && !e.repeat) { s.mutePressed = true; s.muted = !s.muted; } break;
+      case 'KeyB': if (down && !e.repeat) s.brakeHint = !s.brakeHint; break;
       default: return;
     }
     e.preventDefault();

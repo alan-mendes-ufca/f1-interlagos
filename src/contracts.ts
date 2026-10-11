@@ -17,7 +17,7 @@ export const VIEW_H = 270;
    O motor pode recalibrar os VALORES das três constantes abaixo (não os tipos)
    para a projeção ficar boa, mas a relação com metros deve ser respeitada. */
 /** Unidades de mundo por metro. */
-export const UNITS_PER_METER = 40;
+export const UNITS_PER_METER = 10;
 /** Um segmento = SEGMENT_METERS de pista real. */
 export const SEGMENT_METERS = 5;
 export const SEGMENT_LENGTH = SEGMENT_METERS * UNITS_PER_METER;
